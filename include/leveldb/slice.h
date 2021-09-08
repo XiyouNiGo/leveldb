@@ -24,6 +24,7 @@
 
 namespace leveldb {
 
+// 类似于一个暂存数据的结构
 class LEVELDB_EXPORT Slice {
  public:
   // Create an empty slice.
@@ -82,10 +83,12 @@ class LEVELDB_EXPORT Slice {
 
   // Return true iff "x" is a prefix of "*this"
   bool starts_with(const Slice& x) const {
+    // memcpy效率更高
     return ((size_ >= x.size_) && (memcmp(data_, x.data_, x.size_) == 0));
   }
 
  private:
+  // 只读data
   const char* data_;
   size_t size_;
 };
@@ -100,7 +103,9 @@ inline bool operator!=(const Slice& x, const Slice& y) { return !(x == y); }
 inline int Slice::compare(const Slice& b) const {
   const size_t min_len = (size_ < b.size_) ? size_ : b.size_;
   int r = memcmp(data_, b.data_, min_len);
+  // 前min_len个字节一致
   if (r == 0) {
+    // b更长
     if (size_ < b.size_)
       r = -1;
     else if (size_ > b.size_)
