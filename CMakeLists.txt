@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 3.9)
 project(leveldb VERSION 1.23.0 LANGUAGES C CXX)
 
 # C standard can be overridden when this is used as a sub-project.
+# 继承父项目的C标准
 if(NOT CMAKE_C_STANDARD)
   # This project can use C11, but will gracefully decay down to C89.
   set(CMAKE_C_STANDARD 11)
@@ -22,6 +23,7 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_EXTENSIONS OFF)
 endif(NOT CMAKE_CXX_STANDARD)
 
+# 跨平台
 if (WIN32)
   set(LEVELDB_PLATFORM_NAME LEVELDB_PLATFORM_WINDOWS)
   # TODO(cmumford): Make UNICODE configurable for Windows.
@@ -34,10 +36,14 @@ option(LEVELDB_BUILD_TESTS "Build LevelDB's unit tests" ON)
 option(LEVELDB_BUILD_BENCHMARKS "Build LevelDB's benchmarks" ON)
 option(LEVELDB_INSTALL "Install LevelDB's header and library" ON)
 
+# 类似于C/C++的include，从CMAKE_MODULE_PATH中搜索模块或文件
 include(CheckIncludeFile)
+# Cmake自带的
 check_include_file("unistd.h" HAVE_UNISTD_H)
 
+# 检查对应包是否存在
 include(CheckLibraryExists)
+# 第二个参数为函数名
 check_library_exists(crc32c crc32c_value "" HAVE_CRC32C)
 check_library_exists(snappy snappy_compress "" HAVE_SNAPPY)
 check_library_exists(tcmalloc malloc "" HAVE_TCMALLOC)
@@ -48,12 +54,14 @@ include(CheckCXXSymbolExists)
 # compiler language that the project will use later. Principles aside, some
 # versions of do not expose fdatasync() in <unistd.h> in standard C mode
 # (-std=c11), but do expose the function in standard C++ mode (-std=c++11).
+# 检查符号是否存在
 check_cxx_symbol_exists(fdatasync "unistd.h" HAVE_FDATASYNC)
 check_cxx_symbol_exists(F_FULLFSYNC "fcntl.h" HAVE_FULLFSYNC)
 check_cxx_symbol_exists(O_CLOEXEC "fcntl.h" HAVE_O_CLOEXEC)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   # Disable C++ exceptions.
+  # 字符串操作
   string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c-")
   add_definitions(-D_HAS_EXCEPTIONS=0)
@@ -79,6 +87,7 @@ endif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 # Test whether -Wthread-safety is available. See
 # https://clang.llvm.org/docs/ThreadSafetyAnalysis.html
 include(CheckCXXCompilerFlag)
+# 检查编译器是否支持该选项
 check_cxx_compiler_flag(-Wthread-safety HAVE_CLANG_THREAD_SAFETY)
 
 # Used by googletest.
@@ -86,8 +95,8 @@ check_cxx_compiler_flag(-Wno-missing-field-initializers
                         LEVELDB_HAVE_NO_MISSING_FIELD_INITIALIZERS)
 
 include(CheckCXXSourceCompiles)
-
 # Test whether C++17 __has_include is available.
+# 检查是否能编译
 check_cxx_source_compiles("
 #if defined(__has_include) &&  __has_include(<string>)
 #include <string>
@@ -98,11 +107,13 @@ int main() { std::string str; return 0; }
 set(LEVELDB_PUBLIC_INCLUDE_DIR "include/leveldb")
 set(LEVELDB_PORT_CONFIG_DIR "include/port")
 
+# 替换.in文件中变量并拷贝到对应地点
 configure_file(
   "port/port_config.h.in"
   "${PROJECT_BINARY_DIR}/${LEVELDB_PORT_CONFIG_DIR}/port_config.h"
 )
 
+# 全局包含
 include_directories(
   "${PROJECT_BINARY_DIR}/include"
   "."
@@ -117,6 +128,8 @@ endif(BUILD_SHARED_LIBS)
 include(GNUInstallDirs)
 
 add_library(leveldb "")
+# 相比add_executable的好处是能使用PRIVATE（这也是target_xxx的好处）
+# 根目录使用add_excutable，子目录如果想使用对应对象，用PRIVATE可以防止重复定义
 target_sources(leveldb
   PRIVATE
     "${PROJECT_BINARY_DIR}/${LEVELDB_PORT_CONFIG_DIR}/port_config.h"
