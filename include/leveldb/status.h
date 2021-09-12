@@ -54,6 +54,7 @@ class LEVELDB_EXPORT Status {
   }
 
   // Returns true iff the status indicates success.
+  // iff: if and only if
   bool ok() const { return (state_ == nullptr); }
 
   // Returns true iff the status indicates a NotFound error.
@@ -97,6 +98,9 @@ class LEVELDB_EXPORT Status {
   //    state_[0..3] == length of message
   //    state_[4]    == code
   //    state_[5..]  == message
+  // 成功类型为nullptr
+  // 否则为：长度、错误码、信息
+  // 为了节省空间，不使用std::string
   const char* state_;
 };
 
@@ -113,6 +117,7 @@ inline Status& Status::operator=(const Status& rhs) {
   return *this;
 }
 inline Status& Status::operator=(Status&& rhs) noexcept {
+  // Copy and Swap技法
   std::swap(state_, rhs.state_);
   return *this;
 }
