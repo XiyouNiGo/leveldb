@@ -39,6 +39,7 @@ class Arena {
   char* AllocateNewBlock(size_t block_bytes);
 
   // Allocation state
+  // 针对当前块的
   char* alloc_ptr_;
   size_t alloc_bytes_remaining_;
 

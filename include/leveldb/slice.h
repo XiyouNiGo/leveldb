@@ -89,6 +89,7 @@ class LEVELDB_EXPORT Slice {
 
  private:
   // 只读data
+  // 相比之下std::string有三个指针，start、end、end_of_storage
   const char* data_;
   size_t size_;
 };

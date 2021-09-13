@@ -5,12 +5,13 @@
 #include "util/arena.h"
 
 namespace leveldb {
-
+// 默认大小为4096（一般为一个页的大小）
 static const int kBlockSize = 4096;
 
 Arena::Arena()
     : alloc_ptr_(nullptr), alloc_bytes_remaining_(0), memory_usage_(0) {}
 
+// 需求：memtable不需要单次释放内存
 Arena::~Arena() {
   for (size_t i = 0; i < blocks_.size(); i++) {
     delete[] blocks_[i];
@@ -26,6 +27,7 @@ char* Arena::AllocateFallback(size_t bytes) {
   }
 
   // We waste the remaining space in the current block.
+  // 浪费就浪费吧...
   alloc_ptr_ = AllocateNewBlock(kBlockSize);
   alloc_bytes_remaining_ = kBlockSize;
 
@@ -37,9 +39,13 @@ char* Arena::AllocateFallback(size_t bytes) {
 
 char* Arena::AllocateAligned(size_t bytes) {
   const int align = (sizeof(void*) > 8) ? sizeof(void*) : 8;
+  // 静态断言：判断是否是2的n次方（只有一个1存在）
   static_assert((align & (align - 1)) == 0,
                 "Pointer size should be a power of 2");
+  // current_mod：余数
+  // 模拟求余操作，速度更快
   size_t current_mod = reinterpret_cast<uintptr_t>(alloc_ptr_) & (align - 1);
+  // slop：溢出
   size_t slop = (current_mod == 0 ? 0 : align - current_mod);
   size_t needed = bytes + slop;
   char* result;
