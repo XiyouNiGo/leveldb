@@ -17,6 +17,7 @@ namespace leveldb {
 
 Cache::~Cache() {}
 
+// 匿名命名空间（类似static，但其实是external的）
 namespace {
 
 // LRU cache implementation
@@ -43,14 +44,19 @@ namespace {
 struct LRUHandle {
   void* value;
   void (*deleter)(const Slice&, void* value);
+  // 链地址法的hack
   LRUHandle* next_hash;
   LRUHandle* next;
   LRUHandle* prev;
   size_t charge;  // TODO(opt): Only allow uint32_t?
   size_t key_length;
+  // 类似PG_referenced
   bool in_cache;     // Whether entry is in the cache.
+  // 引用计数
   uint32_t refs;     // References, including cache reference, if present.
+  // 用于快速分片和比较
   uint32_t hash;     // Hash of key(); used for fast sharding and comparisons
+  // 类似柔性数组，代表一个不可变的地址常量
   char key_data[1];  // Beginning of key
 
   Slice key() const {
@@ -67,6 +73,7 @@ struct LRUHandle {
 // table implementations in some of the compiler/runtime combinations
 // we have tested.  E.g., readrandom speeds up by ~5% over the g++
 // 4.4.3's builtin hashtable.
+// 内建哈希表，把链地址法hack到LRUHandle中
 class HandleTable {
  public:
   HandleTable() : length_(0), elems_(0), list_(nullptr) { Resize(); }
@@ -79,6 +86,7 @@ class HandleTable {
   LRUHandle* Insert(LRUHandle* h) {
     LRUHandle** ptr = FindPointer(h->key(), h->hash);
     LRUHandle* old = *ptr;
+    // 头插法(优点在于不用判断是否为NULL)
     h->next_hash = (old == nullptr ? nullptr : old->next_hash);
     *ptr = h;
     if (old == nullptr) {
@@ -86,6 +94,7 @@ class HandleTable {
       if (elems_ > length_) {
         // Since each cache entry is fairly large, we aim for a small
         // average linked list length (<= 1).
+        // 元素数量大于桶数量时调用Resize（此时平均每个桶都有一个元素）
         Resize();
       }
     }
@@ -96,6 +105,7 @@ class HandleTable {
     LRUHandle** ptr = FindPointer(key, hash);
     LRUHandle* result = *ptr;
     if (result != nullptr) {
+      // value的生存周期可不归HandleTable管
       *ptr = result->next_hash;
       --elems_;
     }
@@ -113,6 +123,7 @@ class HandleTable {
   // matches key/hash.  If there is no such cache entry, return a
   // pointer to the trailing slot in the corresponding linked list.
   LRUHandle** FindPointer(const Slice& key, uint32_t hash) {
+    // 这俩老哥用位运算代替取余用上瘾了
     LRUHandle** ptr = &list_[hash & (length_ - 1)];
     while (*ptr != nullptr && ((*ptr)->hash != hash || key != (*ptr)->key())) {
       ptr = &(*ptr)->next_hash;
@@ -120,12 +131,14 @@ class HandleTable {
     return ptr;
   }
 
+  // Rehash
   void Resize() {
     uint32_t new_length = 4;
     while (new_length < elems_) {
       new_length *= 2;
     }
     LRUHandle** new_list = new LRUHandle*[new_length];
+    // malloc出来的空间未必是0，calloc才是，因此memset一下
     memset(new_list, 0, sizeof(new_list[0]) * new_length);
     uint32_t count = 0;
     for (uint32_t i = 0; i < length_; i++) {
@@ -181,15 +194,21 @@ class LRUCache {
 
   // mutex_ protects the following state.
   mutable port::Mutex mutex_;
+  // GUARDED_BY：事实上是什么也不做的注释
   size_t usage_ GUARDED_BY(mutex_);
 
   // Dummy head of LRU list.
   // lru.prev is newest entry, lru.next is oldest entry.
   // Entries have refs==1 and in_cache==true.
+  // in_use_中元素可能移入lru_
+  // 类似inactive_list
   LRUHandle lru_ GUARDED_BY(mutex_);
 
   // Dummy head of in-use list.
   // Entries are in use by clients, and have refs >= 2 and in_cache==true.
+  // 所有新元素都会被放到in_use_
+  // 类似active_list
+  // 和lru_都是双向循环链表
   LRUHandle in_use_ GUARDED_BY(mutex_);
 
   HandleTable table_ GUARDED_BY(mutex_);
@@ -204,8 +223,10 @@ LRUCache::LRUCache() : capacity_(0), usage_(0) {
 }
 
 LRUCache::~LRUCache() {
+  // 仍在使用，不能释放
   assert(in_use_.next == &in_use_);  // Error if caller has an unreleased handle
   for (LRUHandle* e = lru_.next; e != &lru_;) {
+    // next：安全释放
     LRUHandle* next = e->next;
     assert(e->in_cache);
     e->in_cache = false;
@@ -216,6 +237,7 @@ LRUCache::~LRUCache() {
 }
 
 void LRUCache::Ref(LRUHandle* e) {
+  // 如果处于lru_且in_cache，移至in_use_
   if (e->refs == 1 && e->in_cache) {  // If on lru_ list, move to in_use_ list.
     LRU_Remove(e);
     LRU_Append(&in_use_, e);
@@ -254,6 +276,7 @@ Cache::Handle* LRUCache::Lookup(const Slice& key, uint32_t hash) {
   MutexLock l(&mutex_);
   LRUHandle* e = table_.Lookup(key, hash);
   if (e != nullptr) {
+    // 近期用到了它
     Ref(e);
   }
   return reinterpret_cast<Cache::Handle*>(e);
@@ -268,14 +291,16 @@ Cache::Handle* LRUCache::Insert(const Slice& key, uint32_t hash, void* value,
                                 size_t charge,
                                 void (*deleter)(const Slice& key,
                                                 void* value)) {
+  // RAII
   MutexLock l(&mutex_);
-
+  // 请注意这个减一
   LRUHandle* e =
       reinterpret_cast<LRUHandle*>(malloc(sizeof(LRUHandle) - 1 + key.size()));
   e->value = value;
   e->deleter = deleter;
   e->charge = charge;
   e->key_length = key.size();
+  // hash缓存
   e->hash = hash;
   e->in_cache = false;
   e->refs = 1;  // for the returned handle.
@@ -286,6 +311,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, uint32_t hash, void* value,
     e->in_cache = true;
     LRU_Append(&in_use_, e);
     usage_ += charge;
+    // HandleTable::Insert返回的是产生冲突的最后一个元素
     FinishErase(table_.Insert(e));
   } else {  // don't cache. (capacity_==0 is supported and turns off caching.)
     // next is read by key() in an assert, so it must be initialized
@@ -316,6 +342,7 @@ bool LRUCache::FinishErase(LRUHandle* e) {
   return e != nullptr;
 }
 
+// 彻底删除，Unref可能只是从in_use_移动到lru_
 void LRUCache::Erase(const Slice& key, uint32_t hash) {
   MutexLock l(&mutex_);
   FinishErase(table_.Remove(key, hash));
@@ -334,8 +361,10 @@ void LRUCache::Prune() {
 }
 
 static const int kNumShardBits = 4;
+// LRUCache实际数量
 static const int kNumShards = 1 << kNumShardBits;
 
+// 为了高并发
 class ShardedLRUCache : public Cache {
  private:
   LRUCache shard_[kNumShards];
@@ -346,6 +375,7 @@ class ShardedLRUCache : public Cache {
     return Hash(s.data(), s.size(), 0);
   }
 
+  // 取高4位
   static uint32_t Shard(uint32_t hash) { return hash >> (32 - kNumShardBits); }
 
  public:
@@ -396,6 +426,7 @@ class ShardedLRUCache : public Cache {
 
 }  // end anonymous namespace
 
+// 为什么这里可以访问到ShardedLRUCache，原因不详
 Cache* NewLRUCache(size_t capacity) { return new ShardedLRUCache(capacity); }
 
 }  // namespace leveldb

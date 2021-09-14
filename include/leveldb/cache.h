@@ -43,6 +43,7 @@ class LEVELDB_EXPORT Cache {
   virtual ~Cache();
 
   // Opaque handle to an entry stored in the cache.
+  // 不透明的handle（使用时需要reinterpret_cast强转）
   struct Handle {};
 
   // Insert a mapping from key->value into the cache and assign it
@@ -84,6 +85,7 @@ class LEVELDB_EXPORT Cache {
   // sharing the same cache to partition the key space.  Typically the
   // client will allocate a new id at startup and prepend the id to
   // its cache keys.
+  // 用于多用户时生成不同的key（prepend到cache key之前)
   virtual uint64_t NewId() = 0;
 
   // Remove all cache entries that are not actively in use.  Memory-constrained
