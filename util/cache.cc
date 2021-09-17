@@ -309,6 +309,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, uint32_t hash, void* value,
   if (capacity_ > 0) {
     e->refs++;  // for the cache's reference.
     e->in_cache = true;
+    // 首先都需要加入in_use_
     LRU_Append(&in_use_, e);
     usage_ += charge;
     // HandleTable::Insert返回的是产生冲突的最后一个元素
@@ -317,6 +318,7 @@ Cache::Handle* LRUCache::Insert(const Slice& key, uint32_t hash, void* value,
     // next is read by key() in an assert, so it must be initialized
     e->next = nullptr;
   }
+  // 每次插入时都需要检查usage_是否过量
   while (usage_ > capacity_ && lru_.next != &lru_) {
     LRUHandle* old = lru_.next;
     assert(old->refs == 1);
@@ -382,6 +384,7 @@ class ShardedLRUCache : public Cache {
   explicit ShardedLRUCache(size_t capacity) : last_id_(0) {
     const size_t per_shard = (capacity + (kNumShards - 1)) / kNumShards;
     for (int s = 0; s < kNumShards; s++) {
+      // 默认per_shard一定大于0
       shard_[s].SetCapacity(per_shard);
     }
   }
