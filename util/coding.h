@@ -50,11 +50,12 @@ char* EncodeVarint64(char* dst, uint64_t value);
 
 // Lower-level versions of Put... that write directly into a character buffer
 // REQUIRES: dst has enough space for the value being written
-
+// Fix：固定大小
 inline void EncodeFixed32(char* dst, uint32_t value) {
   uint8_t* const buffer = reinterpret_cast<uint8_t*>(dst);
 
   // Recent clang and gcc optimize this to a single mov / str instruction.
+  // 注意是static_cast，这样产生出来的都是小端式的存储
   buffer[0] = static_cast<uint8_t>(value);
   buffer[1] = static_cast<uint8_t>(value >> 8);
   buffer[2] = static_cast<uint8_t>(value >> 16);

@@ -18,14 +18,18 @@ void PutFixed64(std::string* dst, uint64_t value) {
   dst->append(buf, sizeof(buf));
 }
 
+// 最高位为0，Varint结束，为1则表示还有数据
 char* EncodeVarint32(char* dst, uint32_t v) {
   // Operate on characters as unsigneds
   uint8_t* ptr = reinterpret_cast<uint8_t*>(dst);
+  // 1000 0000
   static const int B = 128;
+  // 可以直接
   if (v < (1 << 7)) {
     *(ptr++) = v;
   } else if (v < (1 << 14)) {
     *(ptr++) = v | B;
+    // v >> 7第一位必然为0
     *(ptr++) = v >> 7;
   } else if (v < (1 << 21)) {
     *(ptr++) = v | B;
