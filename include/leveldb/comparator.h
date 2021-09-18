@@ -37,6 +37,7 @@ class LEVELDB_EXPORT Comparator {
   //
   // Names starting with "leveldb." are reserved and should not be used
   // by any clients of this package.
+  // 防止比较器不匹配（创建和对比时使用不同比较器）
   virtual const char* Name() const = 0;
 
   // Advanced functions: these are used to reduce the space requirements
@@ -45,6 +46,8 @@ class LEVELDB_EXPORT Comparator {
   // If *start < limit, changes *start to a short string in [start,limit).
   // Simple comparator implementations may return with *start unchanged,
   // i.e., an implementation of this method that does nothing is correct.
+  // 用于减少空间需求，可能什么也不做
+  // TODO:说明这两个函数的具体用途
   virtual void FindShortestSeparator(std::string* start,
                                      const Slice& limit) const = 0;
 

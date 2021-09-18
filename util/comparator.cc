@@ -40,6 +40,8 @@ class BytewiseComparatorImpl : public Comparator {
 
     if (diff_index >= min_length) {
       // Do not shorten if one string is a prefix of the other
+      // 如果一个串为另一个的字串，do nothing
+      // 因为是一部分，没有分隔符这一说
     } else {
       uint8_t diff_byte = static_cast<uint8_t>((*start)[diff_index]);
       if (diff_byte < static_cast<uint8_t>(0xff) &&
@@ -51,6 +53,7 @@ class BytewiseComparatorImpl : public Comparator {
     }
   }
 
+  // 只要比key大就可以，所以说是Successor（继承者）
   void FindShortSuccessor(std::string* key) const override {
     // Find first character that can be incremented
     size_t n = key->size();
