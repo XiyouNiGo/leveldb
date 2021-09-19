@@ -18,6 +18,7 @@ class BloomFilterPolicy : public FilterPolicy {
  public:
   explicit BloomFilterPolicy(int bits_per_key) : bits_per_key_(bits_per_key) {
     // We intentionally round down to reduce probing cost a little bit
+    // 故意四舍五入降低开销
     k_ = static_cast<size_t>(bits_per_key * 0.69);  // 0.69 =~ ln(2)
     if (k_ < 1) k_ = 1;
     if (k_ > 30) k_ = 30;
@@ -38,6 +39,7 @@ class BloomFilterPolicy : public FilterPolicy {
 
     const size_t init_size = dst->size();
     dst->resize(init_size + bytes, 0);
+    // k_被放在dst最后一字节
     dst->push_back(static_cast<char>(k_));  // Remember # of probes in filter
     char* array = &(*dst)[init_size];
     for (int i = 0; i < n; i++) {
@@ -53,6 +55,7 @@ class BloomFilterPolicy : public FilterPolicy {
     }
   }
 
+  // 布隆过滤器返回true表示可能存在，返回false一定不存在
   bool KeyMayMatch(const Slice& key, const Slice& bloom_filter) const override {
     const size_t len = bloom_filter.size();
     if (len < 2) return false;
@@ -70,10 +73,12 @@ class BloomFilterPolicy : public FilterPolicy {
     }
 
     uint32_t h = BloomHash(key);
+    // 做一个简单的移位，或者说Rotate，得到一个随机的增量
     const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
     for (size_t j = 0; j < k; j++) {
       const uint32_t bitpos = h % bits;
       if ((array[bitpos / 8] & (1 << (bitpos % 8))) == 0) return false;
+      // 其实没有多个哈希函数
       h += delta;
     }
     return true;
@@ -81,6 +86,7 @@ class BloomFilterPolicy : public FilterPolicy {
 
  private:
   size_t bits_per_key_;
+  // 模拟哈希函数个数
   size_t k_;
 };
 }  // namespace

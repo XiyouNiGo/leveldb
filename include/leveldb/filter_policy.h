@@ -24,6 +24,7 @@ namespace leveldb {
 
 class Slice;
 
+// 过滤策略
 class LEVELDB_EXPORT FilterPolicy {
  public:
   virtual ~FilterPolicy();
