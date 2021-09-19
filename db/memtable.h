@@ -53,6 +53,7 @@ class MemTable {
   // Add an entry into memtable that maps key to value at the
   // specified sequence number and with the specified type.
   // Typically value will be empty if type==kTypeDeletion.
+  // 插入和删除是一个接口（lazy delete）
   void Add(SequenceNumber seq, ValueType type, const Slice& key,
            const Slice& value);
 

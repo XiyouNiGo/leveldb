@@ -14,6 +14,7 @@ namespace leveldb {
 static Slice GetLengthPrefixedSlice(const char* data) {
   uint32_t len;
   const char* p = data;
+  // 左闭右开，所以是+5
   p = GetVarint32Ptr(p, p + 5, &len);  // +5: we assume "p" is not corrupted
   return Slice(p, len);
 }
@@ -28,14 +29,18 @@ size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }
 int MemTable::KeyComparator::operator()(const char* aptr,
                                         const char* bptr) const {
   // Internal keys are encoded as length-prefixed strings.
+  // LookupKey = Size + InternalKey
   Slice a = GetLengthPrefixedSlice(aptr);
   Slice b = GetLengthPrefixedSlice(bptr);
+  // 只比较Key（后面还有Value）
   return comparator.Compare(a, b);
 }
 
 // Encode a suitable internal key target for "target" and return it.
 // Uses *scratch as scratch space, and the returned pointer will point
 // into this scratch space.
+// Scratch Space：暂存空间
+// target：internal key
 static const char* EncodeKey(std::string* scratch, const Slice& target) {
   scratch->clear();
   PutVarint32(scratch, target.size());
@@ -61,12 +66,14 @@ class MemTableIterator : public Iterator {
   Slice key() const override { return GetLengthPrefixedSlice(iter_.key()); }
   Slice value() const override {
     Slice key_slice = GetLengthPrefixedSlice(iter_.key());
+    // Memtable的value是跟在key后面的
     return GetLengthPrefixedSlice(key_slice.data() + key_slice.size());
   }
 
   Status status() const override { return Status::OK(); }
 
  private:
+  // Table就是跳表
   MemTable::Table::Iterator iter_;
   std::string tmp_;  // For passing to EncodeKey
 };
@@ -80,8 +87,10 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
   //  key bytes    : char[internal_key.size()]
   //  value_size   : varint32 of value.size()
   //  value bytes  : char[value.size()]
+  // key后面是value
   size_t key_size = key.size();
   size_t val_size = value.size();
+  // 8：Sequence Number + Type
   size_t internal_key_size = key_size + 8;
   const size_t encoded_len = VarintLength(internal_key_size) +
                              internal_key_size + VarintLength(val_size) +
@@ -126,6 +135,7 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
           return true;
         }
         case kTypeDeletion:
+          // lazy delete
           *s = Status::NotFound(Slice());
           return true;
       }

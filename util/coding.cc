@@ -95,6 +95,7 @@ const char* GetVarint32PtrFallback(const char* p, const char* limit,
     p++;
     if (byte & 128) {
       // More bytes are present
+      // 第一位为1，更新result，继续遍历
       result |= ((byte & 127) << shift);
     } else {
       result |= (byte << shift);

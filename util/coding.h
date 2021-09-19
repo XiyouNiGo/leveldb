@@ -106,10 +106,12 @@ inline uint64_t DecodeFixed64(const char* ptr) {
 // Internal routine for use by fallback path of GetVarint32Ptr
 const char* GetVarint32PtrFallback(const char* p, const char* limit,
                                    uint32_t* value);
+// fallback：应急计划
 inline const char* GetVarint32Ptr(const char* p, const char* limit,
                                   uint32_t* value) {
   if (p < limit) {
     uint32_t result = *(reinterpret_cast<const uint8_t*>(p));
+    // Varint都是小端，第一位为0表示只有1字节（7位）的数据
     if ((result & 128) == 0) {
       *value = result;
       return p + 1;

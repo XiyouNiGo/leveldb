@@ -155,6 +155,7 @@ template <typename Key, class Comparator>
 struct SkipList<Key, Comparator>::Node {
   explicit Node(const Key& k) : key(k) {}
 
+  // 只有Key，没有Value
   Key const key;
 
   // Accessors/mutators for links.  Wrapped in methods so we can
@@ -220,6 +221,7 @@ inline const Key& SkipList<Key, Comparator>::Iterator::key() const {
 template <typename Key, class Comparator>
 inline void SkipList<Key, Comparator>::Iterator::Next() {
   assert(Valid());
+  // level0的Next，当然就是Next
   node_ = node_->Next(0);
 }
 
@@ -367,6 +369,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
   Node* x = FindGreaterOrEqual(key, prev);
 
   // Our data structure does not allow duplicate insertion
+  // 不允许多重插入
   assert(x == nullptr || !Equal(key, x->key));
 
   int height = RandomHeight();
