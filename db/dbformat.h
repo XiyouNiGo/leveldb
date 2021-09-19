@@ -21,6 +21,7 @@ namespace leveldb {
 
 // Grouping of constants.  We may want to make some of these
 // parameters set via options.
+// 一组常量
 namespace config {
 static const int kNumLevels = 7;
 
@@ -51,6 +52,7 @@ class InternalKey;
 // Value types encoded as the last component of internal keys.
 // DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
 // data structures.
+// InternalKey中的type
 enum ValueType { kTypeDeletion = 0x0, kTypeValue = 0x1 };
 // kValueTypeForSeek defines the ValueType that should be passed when
 // constructing a ParsedInternalKey object for seeking to a particular
@@ -64,10 +66,12 @@ typedef uint64_t SequenceNumber;
 
 // We leave eight bits empty at the bottom so a type and sequence#
 // can be packed together into 64-bits.
+// 底部留8位放type
 static const SequenceNumber kMaxSequenceNumber = ((0x1ull << 56) - 1);
 
 struct ParsedInternalKey {
   Slice user_key;
+  // 序列号，指定了时间顺序
   SequenceNumber sequence;
   ValueType type;
 
@@ -131,6 +135,8 @@ class InternalFilterPolicy : public FilterPolicy {
 // Modules in this directory should keep internal keys wrapped inside
 // the following class instead of plain strings so that we do not
 // incorrectly use string comparisons instead of an InternalKeyComparator.
+// 一个包装类，它是Comparator的比较对象（防止我们错误的用Slice来比较）
+// User key (string) | sequence number (7 bytes) | value type (1 byte)
 class InternalKey {
  private:
   std::string rep_;
@@ -168,6 +174,7 @@ inline int InternalKeyComparator::Compare(const InternalKey& a,
   return Compare(a.Encode(), b.Encode());
 }
 
+// 将internal_key解析为result
 inline bool ParseInternalKey(const Slice& internal_key,
                              ParsedInternalKey* result) {
   const size_t n = internal_key.size();
@@ -181,6 +188,8 @@ inline bool ParseInternalKey(const Slice& internal_key,
 }
 
 // A helper class useful for DBImpl::Get()
+// 例如：Memtable::Get()
+// 组成比InternalKey多了一个Varint32的大小
 class LookupKey {
  public:
   // Initialize *this for looking up user_key at a snapshot with
