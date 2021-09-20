@@ -285,6 +285,7 @@ class LEVELDB_EXPORT WritableFile {
 
   virtual Status Append(const Slice& data) = 0;
   virtual Status Close() = 0;
+  // 要求必须有buffer来应对小片段的写入（为了性能）
   virtual Status Flush() = 0;
   virtual Status Sync() = 0;
 };

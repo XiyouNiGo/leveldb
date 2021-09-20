@@ -13,6 +13,7 @@
 
 namespace leveldb {
 
+// 支持随机读取
 class SequentialFile;
 
 namespace log {
@@ -58,6 +59,7 @@ class Reader {
   // Returns the physical offset of the last record returned by ReadRecord.
   //
   // Undefined before the first call to ReadRecord.
+  // 第一次ReadRecord被调用前未定义
   uint64_t LastRecordOffset();
 
  private:
@@ -89,6 +91,7 @@ class Reader {
   Reporter* const reporter_;
   bool const checksum_;
   char* const backing_store_;
+  // 读缓冲，一次读一个Block
   Slice buffer_;
   bool eof_;  // Last Read() indicated EOF by returning < kBlockSize
 

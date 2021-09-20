@@ -30,11 +30,15 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
 
 Reader::~Reader() { delete[] backing_store_; }
 
+// 移动到初始块
 bool Reader::SkipToInitialBlock() {
+  // 块内偏移
   const size_t offset_in_block = initial_offset_ % kBlockSize;
+  // 应该跟initial_offset_ / offset_in_block是一样的
   uint64_t block_start_location = initial_offset_ - offset_in_block;
 
   // Don't search a block if we'd be in the trailer
+  // 如果块内偏移在tailer，说明不是完整记录，跳过
   if (offset_in_block > kBlockSize - 6) {
     block_start_location += kBlockSize;
   }
@@ -45,6 +49,7 @@ bool Reader::SkipToInitialBlock() {
   if (block_start_location > 0) {
     Status skip_status = file_->Skip(block_start_location);
     if (!skip_status.ok()) {
+      // 报道Corruption
       ReportDrop(block_start_location, skip_status);
       return false;
     }
@@ -65,6 +70,8 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
   bool in_fragmented_record = false;
   // Record offset of the logical record that we're reading
   // 0 is a dummy value to make compilers happy
+  // dummy：仿制品
+  // 预期偏移（逻辑）
   uint64_t prospective_record_offset = 0;
 
   Slice fragment;
@@ -74,6 +81,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
     // ReadPhysicalRecord may have only had an empty trailer remaining in its
     // internal buffer. Calculate the offset of the next physical record now
     // that it has returned, properly accounting for its header size.
+    // 物理偏移
     uint64_t physical_record_offset =
         end_of_buffer_offset_ - buffer_.size() - kHeaderSize - fragment.size();
 
@@ -88,6 +96,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
       }
     }
 
+    // 直到读到kFullType或kLastType
     switch (record_type) {
       case kFullType:
         if (in_fragmented_record) {
@@ -142,6 +151,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
         break;
 
       case kEof:
+        // 没有更多记录可读了
         if (in_fragmented_record) {
           // This can be caused by the writer dying immediately after
           // writing a physical record but before completing the next; don't
@@ -191,6 +201,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     if (buffer_.size() < kHeaderSize) {
       if (!eof_) {
         // Last read was a full read, so this is a trailer to skip
+        // 这是一个tailer
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
         end_of_buffer_offset_ += buffer_.size();
@@ -200,6 +211,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
           eof_ = true;
           return kEof;
         } else if (buffer_.size() < kBlockSize) {
+          // 读到的字节可能小于kBlockSize
           eof_ = true;
         }
         continue;
@@ -220,6 +232,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     const unsigned int type = header[6];
     const uint32_t length = a | (b << 8);
     if (kHeaderSize + length > buffer_.size()) {
+      // 错误的记录
       size_t drop_size = buffer_.size();
       buffer_.clear();
       if (!eof_) {

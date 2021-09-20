@@ -14,16 +14,18 @@ namespace log {
 enum RecordType {
   // Zero is reserved for preallocated files
   kZeroType = 0,
-
+  // 包含整个记录
   kFullType = 1,
 
   // For fragments
+  // 用于分割记录
   kFirstType = 2,
   kMiddleType = 3,
   kLastType = 4
 };
 static const int kMaxRecordType = kLastType;
 
+// 32KB
 static const int kBlockSize = 32768;
 
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).

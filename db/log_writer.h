@@ -37,6 +37,7 @@ class Writer {
   Status AddRecord(const Slice& slice);
 
  private:
+  // Emit：排放、发行
   Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
   WritableFile* dest_;
@@ -45,6 +46,7 @@ class Writer {
   // crc32c values for all supported record types.  These are
   // pre-computed to reduce the overhead of computing the crc of the
   // record type stored in the header.
+  // crc缓存数组
   uint32_t type_crc_[kMaxRecordType + 1];
 };
 
