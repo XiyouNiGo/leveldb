@@ -15,6 +15,7 @@ namespace leveldb {
 struct BlockContents;
 class Comparator;
 
+// 读写分离，用于读BlockData
 class Block {
  public:
   // Initialize the block with the specified contents.
@@ -36,6 +37,7 @@ class Block {
   const char* data_;
   size_t size_;
   uint32_t restart_offset_;  // Offset in data_ of restart array
+  // 是否持有传入的BlockContents
   bool owned_;               // Block owns data_[]
 };
 

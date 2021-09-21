@@ -14,6 +14,7 @@ namespace leveldb {
 
 struct Options;
 
+// 读写分离，用于写BlockData
 class BlockBuilder {
  public:
   explicit BlockBuilder(const Options* options);
