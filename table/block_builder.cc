@@ -12,13 +12,16 @@
 // restart points, and can be used to do a binary search when looking
 // for a particular key.  Values are stored as-is (without compression)
 // immediately following the corresponding key.
+// 节省相同前缀
+// 每隔k个Key存放一个重启点，存储整个键（为了兼顾查找效率）
+// 块尾部存放所有重启点的偏移量，用于二分查找
 //
 // An entry for a particular key-value pair has the form:
-//     shared_bytes: varint32
-//     unshared_bytes: varint32
-//     value_length: varint32
-//     key_delta: char[unshared_bytes]
-//     value: char[value_length]
+//     shared_bytes: varint32 共享前缀长度
+//     unshared_bytes: varint32 非共享前缀长度
+//     value_length: varint32 值长度
+//     key_delta: char[unshared_bytes]  非共享前缀
+//     value: char[value_length]  值
 // shared_bytes == 0 for restart points.
 //
 // The trailer of the block has the form:
@@ -40,6 +43,7 @@ namespace leveldb {
 BlockBuilder::BlockBuilder(const Options* options)
     : options_(options), restarts_(), counter_(0), finished_(false) {
   assert(options->block_restart_interval >= 1);
+  // 第一个重启点偏移量为0
   restarts_.push_back(0);  // First restart point is at offset 0
 }
 
@@ -60,6 +64,7 @@ size_t BlockBuilder::CurrentSizeEstimate() const {
 
 Slice BlockBuilder::Finish() {
   // Append restart array
+  // 追加重启点数组
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
   }
@@ -74,6 +79,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   assert(counter_ <= options_->block_restart_interval);
   assert(buffer_.empty()  // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
+  // 前缀长度
   size_t shared = 0;
   if (counter_ < options_->block_restart_interval) {
     // See how much sharing to do with previous string
@@ -83,6 +89,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
     }
   } else {
     // Restart compression
+    // 若为重启点，直接push，并更新counter_
     restarts_.push_back(buffer_.size());
     counter_ = 0;
   }

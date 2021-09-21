@@ -43,6 +43,7 @@ struct LEVELDB_EXPORT Options {
   // REQUIRES: The client must ensure that the comparator supplied
   // here has the same name and orders keys *exactly* the same as the
   // comparator provided to previous open calls on the same DB.
+  // 客户必须保证对同一个数据库，使用的Comparator相同
   const Comparator* comparator;
 
   // If true, the database will be created if it is missing.
@@ -56,6 +57,8 @@ struct LEVELDB_EXPORT Options {
   // errors.  This may have unforeseen ramifications: for example, a
   // corruption of one DB entry may cause a large number of entries to
   // become unreadable or for the entire DB to become unopenable.
+  // 发生任何错误立即终止，可能导致数据库不可用
+  // paranoid：偏执狂。。。
   bool paranoid_checks = false;
 
   // Use the specified object to interact with the environment,

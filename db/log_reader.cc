@@ -85,6 +85,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
     uint64_t physical_record_offset =
         end_of_buffer_offset_ - buffer_.size() - kHeaderSize - fragment.size();
 
+    // 重新同步（比方说上次只读了一半，或者说读到的是错误的记录）
     if (resyncing_) {
       if (record_type == kMiddleType) {
         continue;
