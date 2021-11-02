@@ -55,6 +55,7 @@ class LEVELDB_EXPORT TableBuilder {
   // Can be used to ensure that two adjacent entries never live in
   // the same data block.  Most clients should not need to use this method.
   // REQUIRES: Finish(), Abandon() have not been called
+  // Flush和Abandon必须被调用一个（保存还是丢弃？）
   void Flush();
 
   // Return non-ok iff some error has been detected.
@@ -84,6 +85,7 @@ class LEVELDB_EXPORT TableBuilder {
   void WriteBlock(BlockBuilder* block, BlockHandle* handle);
   void WriteRawBlock(const Slice& data, CompressionType, BlockHandle* handle);
 
+  // pimpl手法
   struct Rep;
   Rep* rep_;
 };

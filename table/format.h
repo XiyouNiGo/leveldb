@@ -20,6 +20,7 @@ struct ReadOptions;
 
 // BlockHandle is a pointer to the extent of a file that stores a data
 // block or a meta block.
+// 可以理解为指向Block的指针
 class BlockHandle {
  public:
   // Maximum encoding length of a BlockHandle
@@ -45,6 +46,7 @@ class BlockHandle {
 
 // Footer encapsulates the fixed information stored at the tail
 // end of every table file.
+// 页脚
 class Footer {
  public:
   // Encoded length of a Footer.  Note that the serialization of a
@@ -66,13 +68,16 @@ class Footer {
   Status DecodeFrom(Slice* input);
 
  private:
+  // 指向Meta Index Block
   BlockHandle metaindex_handle_;
+  // 指向Index Block
   BlockHandle index_handle_;
 };
 
 // kTableMagicNumber was picked by running
 //    echo http://code.google.com/p/leveldb/ | sha1sum
 // and taking the leading 64 bits.
+// 页脚的魔数
 static const uint64_t kTableMagicNumber = 0xdb4775248b80fb57ull;
 
 // 1-byte type + 32-bit crc

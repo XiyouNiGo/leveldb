@@ -35,14 +35,18 @@ struct TableBuilder::Rep {
     index_block_options.block_restart_interval = 1;
   }
 
+  // for Data Block
   Options options;
+  // for Index Block
   Options index_block_options;
+  // 底层用mmap
   WritableFile* file;
   uint64_t offset;
   Status status;
   BlockBuilder data_block;
   BlockBuilder index_block;
   std::string last_key;
+  // Data Block数量
   int64_t num_entries;
   bool closed;  // Either Finish() or Abandon() has been called.
   FilterBlockBuilder* filter_block;
@@ -58,7 +62,7 @@ struct TableBuilder::Rep {
   // Invariant: r->pending_index_entry is true only if data_block is empty.
   bool pending_index_entry;
   BlockHandle pending_handle;  // Handle to add to index block
-
+  // 启用Snappy的临时存储空间
   std::string compressed_output;
 };
 
